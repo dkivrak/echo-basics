@@ -1,4 +1,4 @@
-package models
+package logs
 
 type FlagEnum string
 

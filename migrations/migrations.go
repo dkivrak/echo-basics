@@ -2,7 +2,7 @@ package migrations
 
 import (
 	"github.com/go-gormigrate/gormigrate/v2"
-	"go.smsk.dev/pkgs/basics/echo-basics/models"
+	"go.smsk.dev/pkgs/basics/echo-basics/internal/logs"
 	"gorm.io/gorm"
 )
 
@@ -31,9 +31,9 @@ func Run(db *gorm.DB) error {
 				}
 
 				// Create logs table only if it doesn't exist
-				hasTable := tx.Migrator().HasTable(&models.Log{})
+				hasTable := tx.Migrator().HasTable(&logs.Log{})
 				if !hasTable {
-					if err := tx.Migrator().CreateTable(&models.Log{}); err != nil {
+					if err := tx.Migrator().CreateTable(&logs.Log{}); err != nil {
 						return err
 					}
 				}
@@ -42,21 +42,21 @@ func Run(db *gorm.DB) error {
 			},
 			Rollback: func(tx *gorm.DB) error {
 				// Drop logs table if exists
-				if tx.Migrator().HasTable(&models.Log{}) {
-					if err := tx.Migrator().DropTable(&models.Log{}); err != nil {
+				if tx.Migrator().HasTable(&logs.Log{}) {
+					if err := tx.Migrator().DropTable(&logs.Log{}); err != nil {
 						return err
 					}
 				}
 
 				// Drop enum type if exists (use DO block to conditionally drop)
 				if err := tx.Exec(`
-DO $$
-BEGIN
-  IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'log_flag') THEN
-    DROP TYPE log_flag;
-  END IF;
-END
-$$;`).Error; err != nil {
+					DO $$
+					BEGIN
+					IF EXISTS (SELECT 1 FROM pg_type WHERE typname = 'log_flag') THEN
+						DROP TYPE log_flag;
+					END IF;
+					END
+					$$;`).Error; err != nil {
 					return err
 				}
 
