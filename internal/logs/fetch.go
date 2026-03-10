@@ -30,7 +30,6 @@ func getPaginationParams(c *echo.Context) (int, int, int) {
 		limit = 10
 	}
 
-	// çok saçma büyüklükte response dönmemek için üst sınır
 	if limit > 100 {
 		limit = 100
 	}
@@ -41,16 +40,22 @@ func getPaginationParams(c *echo.Context) (int, int, int) {
 
 // FetchLogs returns paginated logs.
 func FetchLogs(c *echo.Context) error {
-	db := c.Get("app").(*AppContext).DB
-	if db == nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "app context missing"})
+	db, err := getDB(c)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"error": err.Error(),
+		})
 	}
 
 	page, limit, offset := getPaginationParams(c)
 
 	var total int64
-	if err := db.WithContext(c.Request().Context()).Model(&Log{}).Count(&total).Error; err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	if err := db.WithContext(c.Request().Context()).
+		Model(&Log{}).
+		Count(&total).Error; err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"error": err.Error(),
+		})
 	}
 
 	var logs []Log
@@ -59,7 +64,9 @@ func FetchLogs(c *echo.Context) error {
 		Limit(limit).
 		Offset(offset).
 		Find(&logs).Error; err != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"error": err.Error(),
+		})
 	}
 
 	return c.JSON(http.StatusOK, PaginatedResponse{
@@ -71,104 +78,101 @@ func FetchLogs(c *echo.Context) error {
 }
 
 // FetchID returns a single Log model by UUID.
-// Returns 400 for bad id, 404 if not found, 500 for DB errors.
 func FetchID(c *echo.Context) error {
-	db := c.Get("app").(*AppContext).DB
-	if db == nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "app context missing"})
+	db, err := getDB(c)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"error": err.Error(),
+		})
 	}
 
 	id, err := uuid.Parse(c.Param("id"))
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]interface{}{
-			"error": "bad request, i had better expectations from you.",
+		return c.JSON(http.StatusBadRequest, map[string]string{
+			"error": "invalid id",
 		})
 	}
 
 	var log Log
-	res := db.WithContext(c.Request().Context()).First(&log, "id = ?", id)
+	res := db.WithContext(c.Request().Context()).
+		First(&log, "id = ?", id)
+
 	if res.Error != nil {
 		if errors.Is(res.Error, gorm.ErrRecordNotFound) {
-			return c.JSON(http.StatusNotFound, map[string]interface{}{
-				"error": "ummm, wait a bit... Nope, its not here. Maybe you didn't send me that log?",
+			return c.JSON(http.StatusNotFound, map[string]string{
+				"error": "log not found",
 			})
 		}
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": res.Error.Error()})
+
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"error": res.Error.Error(),
+		})
 	}
 
 	return c.JSON(http.StatusOK, log)
 }
 
 // FetchTimestamp returns the latest log at or before the provided timestamp.
-// Route param must be an RFC3339 timestamp string.
 func FetchTimestamp(c *echo.Context) error {
-	db := c.Get("app").(*AppContext).DB
-	if db == nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "app context missing"})
+	db, err := getDB(c)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"error": err.Error(),
+		})
 	}
 
 	tsStr := strings.TrimSpace(c.Param("timestamp"))
 	if tsStr == "" {
-		return c.JSON(http.StatusBadRequest, map[string]interface{}{"error": "bad request, i had better expectations from you."})
+		return c.JSON(http.StatusBadRequest, map[string]string{
+			"error": "timestamp is required",
+		})
 	}
 
-	var ts time.Time
-	var err error
-	if ts, err = time.Parse(time.RFC3339, tsStr); err != nil {
-		ts, err = time.Parse(time.RFC3339Nano, tsStr)
+	ts, err := time.Parse(time.RFC3339Nano, tsStr)
+	if err != nil {
+		ts, err = time.Parse(time.RFC3339, tsStr)
 	}
 	if err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]interface{}{"error": "bad request, i had better expectations from you."})
+		return c.JSON(http.StatusBadRequest, map[string]string{
+			"error": "invalid timestamp format",
+		})
 	}
-
-	tx := db.WithContext(c.Request().Context()).Begin()
-	if tx.Error != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "could not start transaction"})
-	}
-
-	defer func() {
-		if r := recover(); r != nil {
-			tx.Rollback()
-			panic(r)
-		}
-	}()
 
 	var log Log
-	res := tx.
+	res := db.WithContext(c.Request().Context()).
 		Where("timestamp <= ?", ts).
 		Order("timestamp desc").
 		First(&log)
 
 	if res.Error != nil {
-		tx.Rollback()
-
 		if errors.Is(res.Error, gorm.ErrRecordNotFound) {
-			return c.JSON(http.StatusNotFound, map[string]interface{}{
-				"error": "ummm, wait a bit... Nope, its not here. Maybe you didn't send me that log?",
+			return c.JSON(http.StatusNotFound, map[string]string{
+				"error": "log not found",
 			})
 		}
 
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": res.Error.Error()})
-	}
-
-	if err := tx.Commit().Error; err != nil {
-		tx.Rollback()
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "could not commit transaction"})
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"error": res.Error.Error(),
+		})
 	}
 
 	return c.JSON(http.StatusOK, log)
 }
 
-// FetchFlag returns paginated logs filtered by flag (case-insensitive).
+// FetchFlag returns paginated logs filtered by flag.
 func FetchFlag(c *echo.Context) error {
-	db := c.Get("app").(*AppContext).DB
-	if db == nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "app context missing"})
+	db, err := getDB(c)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"error": err.Error(),
+		})
 	}
 
 	flagParam := strings.ToLower(strings.TrimSpace(c.Param("flag")))
 	if flagParam == "" {
-		return c.JSON(http.StatusBadRequest, map[string]interface{}{"error": "bad request, i had better expectations from you."})
+		return c.JSON(http.StatusBadRequest, map[string]string{
+			"error": "flag is required",
+		})
 	}
 
 	allowed := map[string]struct{}{
@@ -181,43 +185,33 @@ func FetchFlag(c *echo.Context) error {
 	}
 
 	if _, ok := allowed[flagParam]; !ok {
-		return c.JSON(http.StatusBadRequest, map[string]interface{}{"error": "WHAT'S THAT FLAG? I HAVE NEVER SEEN THAT!!!"})
+		return c.JSON(http.StatusBadRequest, map[string]string{
+			"error": "invalid flag",
+		})
 	}
 
 	page, limit, offset := getPaginationParams(c)
 
-	tx := db.WithContext(c.Request().Context()).Begin()
-	if tx.Error != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "could not start transaction"})
-	}
-
-	defer func() {
-		if r := recover(); r != nil {
-			tx.Rollback()
-			panic(r)
-		}
-	}()
-
 	var total int64
-	if err := tx.Model(&Log{}).Where("flag = ?", flagParam).Count(&total).Error; err != nil {
-		tx.Rollback()
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
+	if err := db.WithContext(c.Request().Context()).
+		Model(&Log{}).
+		Where("flag = ?", flagParam).
+		Count(&total).Error; err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"error": err.Error(),
+		})
 	}
 
 	var logs []Log
-	if err := tx.
+	if err := db.WithContext(c.Request().Context()).
 		Where("flag = ?", flagParam).
 		Order("timestamp desc").
 		Limit(limit).
 		Offset(offset).
 		Find(&logs).Error; err != nil {
-		tx.Rollback()
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": err.Error()})
-	}
-
-	if err := tx.Commit().Error; err != nil {
-		tx.Rollback()
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "could not commit transaction"})
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"error": err.Error(),
+		})
 	}
 
 	return c.JSON(http.StatusOK, PaginatedResponse{

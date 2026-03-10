@@ -9,10 +9,10 @@ import (
 )
 
 func main() {
-	env := config.LoadEnv()
-	fmt.Println("Running migrations in env:", env)
+	cfg := config.MustLoad()
+	database := db.InitDB(cfg)
 
-	database := db.InitDB()
+	fmt.Println("Running migrations in env:", cfg.Env)
 
 	if err := migrations.Run(database); err != nil {
 		panic(fmt.Sprintf("migration failed: %v", err))

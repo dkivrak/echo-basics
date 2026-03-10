@@ -10,7 +10,13 @@ import (
 )
 
 func DeleteLog(c *echo.Context) error {
-	db := c.Get("app").(*AppContext).DB
+	db, err := getDB(c)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"error": err.Error(),
+		})
+	}
+
 	if db == nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{
 			"error": "app context missing",

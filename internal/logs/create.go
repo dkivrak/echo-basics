@@ -8,19 +8,28 @@ import (
 )
 
 func CreateLog(c *echo.Context) error {
-	db := c.Get("app").(*AppContext).DB
-	if db == nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{"error": "app context missing"})
+	db, err := getDB(c)
+	if err != nil {
+		return c.JSON(http.StatusInternalServerError, map[string]string{
+			"error": err.Error(),
+		})
 	}
 
 	var payload struct {
 		Flag    FlagEnum `json:"flag"`
-		Message string   `json:"message" validate:"required"`
+		Message string   `json:"message"`
 	}
 
 	if err := c.Bind(&payload); err != nil {
-		return c.JSON(http.StatusBadRequest, map[string]interface{}{
-			"error": "bad request, I had better expectations from you.",
+		return c.JSON(http.StatusBadRequest, map[string]string{
+			"error": "invalid request body",
+		})
+	}
+
+	payload.Message = strings.TrimSpace(payload.Message)
+	if payload.Message == "" {
+		return c.JSON(http.StatusBadRequest, map[string]string{
+			"error": "message is required",
 		})
 	}
 
@@ -41,37 +50,14 @@ func CreateLog(c *echo.Context) error {
 		})
 	}
 
-	// transaction başlat
-	tx := db.Begin()
-	if tx.Error != nil {
-		return c.JSON(http.StatusInternalServerError, map[string]string{
-			"error": "could not start transaction",
-		})
-	}
-
-	defer func() {
-		if r := recover(); r != nil {
-			tx.Rollback()
-			panic(r)
-		}
-	}()
-
 	log := Log{
 		Flag:    FlagEnum(flagStr),
 		Message: payload.Message,
 	}
 
-	if err := tx.Create(&log).Error; err != nil {
-		tx.Rollback()
+	if err := db.WithContext(c.Request().Context()).Create(&log).Error; err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{
 			"error": "could not create log",
-		})
-	}
-
-	if err := tx.Commit().Error; err != nil {
-		tx.Rollback()
-		return c.JSON(http.StatusInternalServerError, map[string]string{
-			"error": "could not commit transaction",
 		})
 	}
 

@@ -1,8 +1,7 @@
 package db
 
 import (
-	"os"
-
+	"go.smsk.dev/pkgs/basics/echo-basics/internal/config"
 	"gorm.io/driver/postgres"
 	"gorm.io/gorm"
 )
@@ -10,8 +9,8 @@ import (
 // InitDB opens a database connection and returns a *gorm.DB.
 // It intentionally does NOT perform AutoMigrate or any schema changes
 // so that opening the DB does not alter the database schema.
-func InitDB() *gorm.DB {
-	dsn := os.Getenv("DSN")
+func InitDB(cfg config.Config) *gorm.DB {
+	dsn := cfg.DSN
 	if dsn == "" {
 		panic("DSN environment variable is not set")
 	}
