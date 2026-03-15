@@ -1,14 +1,16 @@
-package logs
+package handlers
 
 import (
 	"net/http"
 	"strings"
 
 	"github.com/labstack/echo/v5"
+	"go.smsk.dev/pkgs/basics/echo-basics/internal/models"
+	"go.smsk.dev/pkgs/basics/echo-basics/internal/utils"
 )
 
 func CreateLog(c *echo.Context) error {
-	db, err := getDB(c)
+	db, err := utils.GetDB(c)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{
 			"error": err.Error(),
@@ -16,8 +18,8 @@ func CreateLog(c *echo.Context) error {
 	}
 
 	var payload struct {
-		Flag    FlagEnum `json:"flag"`
-		Message string   `json:"message"`
+		Flag    utils.FlagEnum `json:"flag"`
+		Message string         `json:"message"`
 	}
 
 	if err := c.Bind(&payload); err != nil {
@@ -35,13 +37,13 @@ func CreateLog(c *echo.Context) error {
 
 	flagStr := strings.ToLower(strings.TrimSpace(string(payload.Flag)))
 	if flagStr == "" {
-		flagStr = string(InfoFlag)
+		flagStr = string(utils.InfoFlag)
 	}
 
 	allowed := map[string]struct{}{
-		string(InfoFlag):  {},
-		string(WarnFlag):  {},
-		string(ErrorFlag): {},
+		string(utils.InfoFlag):  {},
+		string(utils.WarnFlag):  {},
+		string(utils.ErrorFlag): {},
 	}
 
 	if _, ok := allowed[flagStr]; !ok {
@@ -50,8 +52,8 @@ func CreateLog(c *echo.Context) error {
 		})
 	}
 
-	log := Log{
-		Flag:    FlagEnum(flagStr),
+	log := models.Log{
+		Flag:    utils.FlagEnum(flagStr),
 		Message: payload.Message,
 	}
 

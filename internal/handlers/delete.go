@@ -1,4 +1,4 @@
-package logs
+package handlers
 
 import (
 	"errors"
@@ -6,11 +6,13 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v5"
+	"go.smsk.dev/pkgs/basics/echo-basics/internal/models"
+	"go.smsk.dev/pkgs/basics/echo-basics/internal/utils"
 	"gorm.io/gorm"
 )
 
 func DeleteLog(c *echo.Context) error {
-	db, err := getDB(c)
+	db, err := utils.GetDB(c)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{
 			"error": err.Error(),
@@ -44,7 +46,7 @@ func DeleteLog(c *echo.Context) error {
 		}
 	}()
 
-	var log Log
+	var log models.Log
 	if err := tx.First(&log, "id = ?", id).Error; err != nil {
 		tx.Rollback()
 
@@ -59,7 +61,7 @@ func DeleteLog(c *echo.Context) error {
 		})
 	}
 
-	if GetLogLevel(log.Flag) >= 4 {
+	if utils.GetLogLevel(log.Flag) >= 4 {
 		tx.Rollback()
 		return c.JSON(http.StatusForbidden, map[string]string{
 			"error": "EEEEYYYY! You can't do that!",

@@ -1,4 +1,4 @@
-package logs
+package utils
 
 func GetLogLevel(flag FlagEnum) int {
 	switch flag {

@@ -1,0 +1,15 @@
+package models
+
+import (
+	"time"
+
+	"github.com/google/uuid"
+	"go.smsk.dev/pkgs/basics/echo-basics/internal/utils"
+)
+
+type Log struct {
+	ID        uuid.UUID      `gorm:"primarykey;type:uuid;default:uuid_generate_v4()"`
+	Flag      utils.FlagEnum `gorm:"type:log_flag"`
+	Message   string         `gorm:"type:text;not null"`
+	Timestamp time.Time      `gorm:"default:CURRENT_TIMESTAMP"`
+}

@@ -10,8 +10,7 @@ import (
 	"go.smsk.dev/pkgs/basics/echo-basics/internal/config"
 	"go.smsk.dev/pkgs/basics/echo-basics/internal/db"
 	"go.smsk.dev/pkgs/basics/echo-basics/internal/logger"
-	"go.smsk.dev/pkgs/basics/echo-basics/internal/logs"
-	customMiddleware "go.smsk.dev/pkgs/basics/echo-basics/internal/middleware"
+	"go.smsk.dev/pkgs/basics/echo-basics/internal/routes"
 )
 
 func main() {
@@ -32,22 +31,14 @@ func main() {
 	e.Use(echoMiddleware.RateLimiter(
 		echoMiddleware.NewRateLimiterMemoryStore(cfg.LimitRate),
 	))
-	e.Use(customMiddleware.InjectAppContext(appCtx))
+
+	e.Use(app.InjectAppContext(appCtx))
 
 	e.GET("/", func(c *echo.Context) error {
-		return c.String(http.StatusOK, "Hello from the other side")
+		return c.String(http.StatusOK, "Hello darkness, my old friend (If you are seeing this, good.)")
 	})
 
-	e.GET("/health", app.HealthCheck)
-
-	api := e.Group("/api", customMiddleware.APIKeyAuth(cfg.APIKey))
-
-	api.POST("/logs", logs.CreateLog)
-	api.GET("/logs", logs.FetchLogs)
-	api.GET("/logs/id/:id", logs.FetchID)
-	api.GET("/logs/timestamp/:timestamp", logs.FetchTimestamp)
-	api.GET("/logs/flag/:flag", logs.FetchFlag)
-	api.DELETE("/logs/:id", logs.DeleteLog)
+	routes.Register(e, cfg)
 
 	log.Info("starting api server", "port", cfg.Port, "env", cfg.Env)
 

@@ -1,4 +1,4 @@
-package logs
+package handlers
 
 import (
 	"errors"
@@ -9,6 +9,9 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/labstack/echo/v5"
+	"go.smsk.dev/pkgs/basics/echo-basics/internal/models"
+	"go.smsk.dev/pkgs/basics/echo-basics/internal/utils"
+
 	"gorm.io/gorm"
 )
 
@@ -40,7 +43,7 @@ func getPaginationParams(c *echo.Context) (int, int, int) {
 
 // FetchLogs returns paginated logs.
 func FetchLogs(c *echo.Context) error {
-	db, err := getDB(c)
+	db, err := utils.GetDB(c)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{
 			"error": err.Error(),
@@ -51,14 +54,14 @@ func FetchLogs(c *echo.Context) error {
 
 	var total int64
 	if err := db.WithContext(c.Request().Context()).
-		Model(&Log{}).
+		Model(&models.Log{}).
 		Count(&total).Error; err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{
 			"error": err.Error(),
 		})
 	}
 
-	var logs []Log
+	var logs []models.Log
 	if err := db.WithContext(c.Request().Context()).
 		Order("timestamp desc").
 		Limit(limit).
@@ -79,7 +82,7 @@ func FetchLogs(c *echo.Context) error {
 
 // FetchID returns a single Log model by UUID.
 func FetchID(c *echo.Context) error {
-	db, err := getDB(c)
+	db, err := utils.GetDB(c)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{
 			"error": err.Error(),
@@ -93,7 +96,7 @@ func FetchID(c *echo.Context) error {
 		})
 	}
 
-	var log Log
+	var log models.Log
 	res := db.WithContext(c.Request().Context()).
 		First(&log, "id = ?", id)
 
@@ -114,7 +117,7 @@ func FetchID(c *echo.Context) error {
 
 // FetchTimestamp returns the latest log at or before the provided timestamp.
 func FetchTimestamp(c *echo.Context) error {
-	db, err := getDB(c)
+	db, err := utils.GetDB(c)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{
 			"error": err.Error(),
@@ -138,7 +141,7 @@ func FetchTimestamp(c *echo.Context) error {
 		})
 	}
 
-	var log Log
+	var log models.Log
 	res := db.WithContext(c.Request().Context()).
 		Where("timestamp <= ?", ts).
 		Order("timestamp desc").
@@ -161,7 +164,7 @@ func FetchTimestamp(c *echo.Context) error {
 
 // FetchFlag returns paginated logs filtered by flag.
 func FetchFlag(c *echo.Context) error {
-	db, err := getDB(c)
+	db, err := utils.GetDB(c)
 	if err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{
 			"error": err.Error(),
@@ -176,12 +179,12 @@ func FetchFlag(c *echo.Context) error {
 	}
 
 	allowed := map[string]struct{}{
-		string(LogFlag):   {},
-		string(DebugFlag): {},
-		string(InfoFlag):  {},
-		string(WarnFlag):  {},
-		string(ErrorFlag): {},
-		string(TraceFlag): {},
+		string(utils.LogFlag):   {},
+		string(utils.DebugFlag): {},
+		string(utils.InfoFlag):  {},
+		string(utils.WarnFlag):  {},
+		string(utils.ErrorFlag): {},
+		string(utils.TraceFlag): {},
 	}
 
 	if _, ok := allowed[flagParam]; !ok {
@@ -194,7 +197,7 @@ func FetchFlag(c *echo.Context) error {
 
 	var total int64
 	if err := db.WithContext(c.Request().Context()).
-		Model(&Log{}).
+		Model(&models.Log{}).
 		Where("flag = ?", flagParam).
 		Count(&total).Error; err != nil {
 		return c.JSON(http.StatusInternalServerError, map[string]string{
@@ -202,7 +205,7 @@ func FetchFlag(c *echo.Context) error {
 		})
 	}
 
-	var logs []Log
+	var logs []models.Log
 	if err := db.WithContext(c.Request().Context()).
 		Where("flag = ?", flagParam).
 		Order("timestamp desc").

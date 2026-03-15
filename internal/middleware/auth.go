@@ -6,6 +6,8 @@ import (
 	"github.com/labstack/echo/v5"
 )
 
+// APIKeyAuth returns an Echo middleware that validates the `X-API-Key` header.
+// Renamed from AuthMiddleware to match the callsites in cmd/api/main.go.
 func APIKeyAuth(expectedKey string) echo.MiddlewareFunc {
 	return func(next echo.HandlerFunc) echo.HandlerFunc {
 		return func(c *echo.Context) error {

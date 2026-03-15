@@ -2,7 +2,7 @@ package migrations
 
 import (
 	"github.com/go-gormigrate/gormigrate/v2"
-	"go.smsk.dev/pkgs/basics/echo-basics/internal/logs"
+	models "go.smsk.dev/pkgs/basics/echo-basics/internal/models"
 	"gorm.io/gorm"
 )
 
@@ -31,9 +31,9 @@ func Run(db *gorm.DB) error {
 				}
 
 				// Create logs table only if it doesn't exist
-				hasTable := tx.Migrator().HasTable(&logs.Log{})
+				hasTable := tx.Migrator().HasTable(&models.Log{})
 				if !hasTable {
-					if err := tx.Migrator().CreateTable(&logs.Log{}); err != nil {
+					if err := tx.Migrator().CreateTable(&models.Log{}); err != nil {
 						return err
 					}
 				}
@@ -42,8 +42,8 @@ func Run(db *gorm.DB) error {
 			},
 			Rollback: func(tx *gorm.DB) error {
 				// Drop logs table if exists
-				if tx.Migrator().HasTable(&logs.Log{}) {
-					if err := tx.Migrator().DropTable(&logs.Log{}); err != nil {
+				if tx.Migrator().HasTable(&models.Log{}) {
+					if err := tx.Migrator().DropTable(&models.Log{}); err != nil {
 						return err
 					}
 				}
