@@ -2,48 +2,8 @@
 
 > A simple REST API built with Go + Echo + GORM for storing and managing logs.
 The project demonstrates a clean backend architecture with separated layers for handlers, models, utilities, and routes.
-
----
-
-## What is this?
-
-A remote logging API. You send logs to it, it stores them, you can fetch and delete them. That's it. Simple on the surface, but there's enough going on under the hood to learn a lot from it — migrations, enums, context injection, rate limiting, and more.
-
-## Stack
-
-- [Go 1.25+](https://go.dev/)
-- [Echo v5](https://github.com/labstack/echo) — HTTP framework
-- [GORM v2](https://gorm.io/) — ORM
-- [gormigrate](https://github.com/go-gormigrate/gormigrate) — versioned migrations
-- [PostgreSQL](https://www.postgresql.org/) — database
-
----
-
-## Getting Started
-
-### Prerequisites
-
-- Go 1.25+
-- PostgreSQL running locally (or remotely, doesn't matter)
-- `jq` (optional, but makes test output much nicer)
-
-### Environment
-
-Create a `.dev.env` file in the project root (or a `.env` file — both are loaded):
-
-```
-DSN=postgres://user:pass@localhost:5432/dbname?sslmode=disable
-PORT=6070
-LIMIT_RATE=20
-```
-
-### Run
-
-```sh
-go run .
-```
-
-That's it. Migrations run automatically on startup — they're idempotent so running them multiple times won't blow anything up.
+> This project is based on and forked from the original tutorial repository, this particular repository is my interpretation built on it. The repository mentioned:  
+https://github.com/smsk-dev/go-basics/tree/main/echo-basics
 
 ---
 
@@ -68,50 +28,112 @@ internal/
   db/
     db.go          -> database connection
 
-  handlers/
+  handlers/        -> HTTP handlers
     create.go
     delete.go
     fetch.go
-    -> HTTP handlers
 
-  models/
+  models/          -> database models
     log.go
-    -> database models
 
-  middleware/
+  middleware/      -> API key authentication
     auth.go
-    -> API key authentication
 
-  routes/
+  routes/          -> route registration
     routes.go
-    -> route registration
 
-  utils/
+  utils/           -> helper utilities
     enums.go
     helpers.go
     levels.go
-    -> helper utilities
 
-  migrations/
+  migrations/      -> database migrations
     migrations.go
-    -> database migrations
 ```
 
 ---
 
-## API Reference
+##Features
+- Create logs
+- Fetch logs
+- Filter logs by:
+- ID
+- flag
+- timestamp
+- Delete logs
+- API key authentication
+- Rate limiting
+- Database migrations
+- Structured logging
+- Modular project structure
 
-Base path: `/api`
+## Stack
 
-### Health
+- [Go 1.25+](https://go.dev/)
+- [Echo v5](https://github.com/labstack/echo) — HTTP framework
+- [GORM v2](https://gorm.io/) — ORM
+- [gormigrate](https://github.com/go-gormigrate/gormigrate) — versioned migrations
+- [PostgreSQL](https://www.postgresql.org/) — database
 
+---
+
+## Getting Started
+
+### Prerequisites
+
+- Go 1.25+
+- PostgreSQL running locally (or remotely, doesn't matter)
+- `jq` (optional, but makes test output much nicer)
+
+
+## Running The Project
+
+### 1. Install dependencies
+
+```bash
+go mod tidy
+```
+
+### 2. Configure environment variables
+
+Create a .env file in the project root.
+Example:
+
+```
+PORT=6070
+DB_HOST=localhost
+DB_PORT=5432
+DB_USER=postgres
+DB_PASSWORD=postgres
+DB_NAME=echo_logs
+API_KEY=secret
+LIMIT_RATE=10
+ENV=dev
+```
+
+### 3. Run the API
+
+```
+go run ./cmd/api
+```
+The server will start at:
+```
+http://localhost:6070
+```
+
+---
+
+## API Endpoints
+
+### Health Check
+Checks if the API is running.
+
+**Request**
 ```
 GET /api/health
 ```
 
-Just checking if we're alive.
-
-**Response 200**
+**Response **
 ```json
 {
   "status": "ok",
@@ -122,12 +144,19 @@ Just checking if we're alive.
 ---
 
 ### Create Log
+Creates a new log entry.
 
+***Request***
 ```
-POST /api/create
+POST /api/logs
 ```
 
-Creates a new log entry. `flag` defaults to `info` if not provided. Case-insensitive — send `INFO` or `info`, we don't mind.
+
+**Request headers**
+```
+X-API-Key: your_api_key
+Content-Type: application/json
+```
 
 **Request body**
 ```json
@@ -137,63 +166,76 @@ Creates a new log entry. `flag` defaults to `info` if not provided. Case-insensi
 }
 ```
 
-**Allowed flag values**
-
-| Flag    | Level |
-|---------|-------|
-| `log`   | 0     |
-| `debug` | 1     |
-| `info`  | 2     |
-| `warn`  | 3     |
-| `error` | 4     |
-| `trace` | 5     |
-
-**Response 201**
+***Response***
 ```json
 {
-  "ID": "6af05bdd-2b64-4365-a600-b7d87a169da5",
-  "Flag": "info",
-  "Message": "something happened",
-  "Timestamp": "2026-02-23T00:00:00Z"
+  "id": "uuid",
+  "flag": "info",
+  "message": "test message",
+  "timestamp": "2026-03-15T15:00:00Z"
 }
 ```
-
-**Response 400** — bad payload or invalid flag  
-**Response 500** — something went wrong on our end
-
 ---
+### Fetch All Logs
 
-### List Logs
-
+**Request**
 ```
-GET /api/list
+GET /api/logs
 ```
 
-Returns all logs. Yes, all of them. Pagination is a task left for you — go ahead and open a PR.
+**Headers**
+```
+X-API-Key: your_api_key
+```
 
-**Response 200** — array of log objects
+***Response***
+```json
+{
+  "id": "uuid",
+  "flag": "info",
+  "message": "test message",
+  "timestamp": "2026-03-15T15:00:00Z"
+}
+```
 
 ---
 
 ### Fetch by ID
 
+***Request***
 ```
-GET /api/fetch/i/:id
+GET /api/logs/id/:id
 ```
+***Example:***
+```
+GET /api/logs/id/7dff1c48-4a71-4a6c-9a21-0cfa1e5d0e45
+````
 
-Fetch a single log by its UUID.
-
-**Response 200** — single log object  
-**Response 400** — that's not a UUID  
-**Response 404** — not found
+***Headers***
+```
+X-API-Key: your_api_key
+```
 
 ---
 
-### Fetch by Timestamp
 
+### Fetch by Timestamp
+Returns logs filtered by timestamp.
+
+***Request***
 ```
-GET /api/fetch/t/:timestamp
+GET /api/logs/timestamp/:timestamp
 ```
+
+***Example:***
+```
+GET /api/logs/timestamp/2026-03-15T15:00:00Z
+```
+***Headers***
+```
+X-API-Key: your_api_key
+```
+
 
 Returns the latest log at or before the given timestamp. Timestamp must be RFC3339 format (e.g. `2026-02-23T00:00:00Z`).
 
@@ -204,70 +246,71 @@ Returns the latest log at or before the given timestamp. Timestamp must be RFC33
 ---
 
 ### Fetch by Flag
+Returns logs filtered by severity level.
 
+***Request***
 ```
-GET /api/fetch/f/:flag
+GET /api/logs/flag/:flag
 ```
 
-Returns all logs with the given flag, ordered by timestamp descending. Case-insensitive.
+***Example:***
+```
+GET /api/logs/flag/info`
+```
 
-**Response 200** — array of log objects  
-**Response 400** — invalid flag value  
-**Response 500** — DB error
+***Headers***
+```
+X-API-Key: your_api_key
+```
 
 ---
 
 ### Delete Log
+Deletes a log entry.
 
+***Request***
 ```
-DELETE /api/delete/:id
+DELETE /api/logs/:id
 ```
 
-Deletes a log by UUID. There's a catch — you can only delete logs with a flag level **below 4** (i.e. `log`, `debug`, `info`, `warn`). `error` and `trace` are off limits.
+***Example***
+```
+DELETE /api/logs/7dff1c48-4a71-4a6c-9a21-0cfa1e5d0e45
+```
 
-**Response 200** — deleted  
-**Response 400** — bad UUID  
-**Response 403** — flag level too high, not allowed  
-**Response 404** — log not found  
-**Response 500** — DB error
+***Headers***
+```
+X-API-Key: your_api_key
+```
+
+***Note***
+Logs with high severity levels (for example error or trace) may be protected from deletion depending on application logic.
 
 ---
 
-## Running Tests
-
-Smoke tests live under `tests/`. They use `curl` — no frameworks, no fuss.
-
-```sh
-# Run everything in order
-./tests/run_all.sh
-
-# Or run individually
-./tests/health.sh
-./tests/create.sh
-./tests/list.sh
-./tests/fetch_by_flag.sh INFO
-./tests/fetch_by_id.sh <uuid>
-./tests/delete.sh <uuid>
-```
-
-Install `jq` to get pretty-printed output and automatic UUID extraction between steps.
-
----
 
 ## Migrations
+```
+go run ./cmd/migrate
+```
+This migration will:
 
-Migrations are versioned using `gormigrate` and run automatically at startup via `migrations.Run(db)`. They're idempotent — safe to re-run.
-
-Current migrations:
-- `1771799054_init_uuid_and_logs` — creates `uuid-ossp` extension, `log_flag` enum and the `logs` table.
-
-To add a new migration, append a new `*gormigrate.Migration` entry in `migrations/migrations.go` with a unique incrementing ID.
+- create the uuid-ossp extension
+- create the log_flag enum type
+- create the logs table
 
 ---
+##Architecture Notes
 
-## Contributing
-
-If you spot something wrong or want to practice your Go and PR skills — go for it. There are intentional bad practices hidden in the codebase. Find them, fix them, open a PR.
+The project follows a modular structure:
+- handlers handle HTTP requests
+- models define database entities
+- routes register endpoints
+-middleware handles authentication and request filtering
+- utils contains shared helper functions
+- migrations manage database schema changes
+  
+This separation improves maintainability and scalability.
 
 ---
 
