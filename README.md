@@ -1,8 +1,7 @@
 # echo-basics
 
-> A simple remote logging REST-ish API built with Go, Echo v5, GORM and Postgres. This is an in-person tutorial project — my students and I put this together to learn Go web development the right way, using the latest versions of everything.
-
-Fair warning: I've intentionally left some bad practices in the code. If you spot them, open a PR — that's part of the exercise.
+> A simple REST API built with Go + Echo + GORM for storing and managing logs.
+The project demonstrates a clean backend architecture with separated layers for handlers, models, utilities, and routes.
 
 ---
 
@@ -51,16 +50,51 @@ That's it. Migrations run automatically on startup — they're idempotent so run
 ## Project Structure
 
 ```
-echo-basics/
-├── docs/               # documentation (you're reading it)
-├── migrations/         # gormigrate migration definitions
-├── models/             # GORM models, enums, app context
-├── modules/            # db init, env loader, utilities
-├── routes/             # route handlers
-├── tests/              # curl-based smoke tests
-├── server.go           # entry point
-├── go.mod
-└── LICENSE
+cmd/
+  api/
+    main.go        -> application entry point
+  migrate/
+    main.go        -> migration runner
+
+internal/
+
+  app/
+    context.go     -> shared application context
+    health.go      -> health check endpoint
+
+  config/
+    config.go      -> environment configuration
+
+  db/
+    db.go          -> database connection
+
+  handlers/
+    create.go
+    delete.go
+    fetch.go
+    -> HTTP handlers
+
+  models/
+    log.go
+    -> database models
+
+  middleware/
+    auth.go
+    -> API key authentication
+
+  routes/
+    routes.go
+    -> route registration
+
+  utils/
+    enums.go
+    helpers.go
+    levels.go
+    -> helper utilities
+
+  migrations/
+    migrations.go
+    -> database migrations
 ```
 
 ---
