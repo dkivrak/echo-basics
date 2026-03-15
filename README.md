@@ -134,7 +134,7 @@ Checks if the API is running.
 GET /api/health
 ```
 
-**Response **
+**Response**
 ```json
 {
   "status": "ok",
@@ -274,7 +274,7 @@ Deletes a log entry.
 DELETE /api/logs/:id
 ```
 
-***Example***
+***Example:***
 ```
 DELETE /api/logs/7dff1c48-4a71-4a6c-9a21-0cfa1e5d0e45
 ```
