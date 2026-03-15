@@ -48,8 +48,8 @@ internal/
     helpers.go
     levels.go
 
-  migrations/      -> database migrations
-    migrations.go
+migrations/      -> database migrations
+  migrations.go
 ```
 
 ---
@@ -58,9 +58,9 @@ internal/
 - Create logs
 - Fetch logs
 - Filter logs by:
-- ID
-- flag
-- timestamp
+  - ID
+  - flag
+  - timestamp
 - Delete logs
 - API key authentication
 - Rate limiting
