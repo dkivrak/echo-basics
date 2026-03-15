@@ -2,6 +2,7 @@
 
 > A simple REST API built with Go + Echo + GORM for storing and managing logs.
 The project demonstrates a clean backend architecture with separated layers for handlers, models, utilities, and routes.
+> 
 > This project is based on and forked from the original tutorial repository, this particular repository is my interpretation built on it. The repository mentioned:  
 https://github.com/smsk-dev/go-basics/tree/main/echo-basics
 
@@ -53,7 +54,7 @@ internal/
 
 ---
 
-##Features
+## Features
 - Create logs
 - Fetch logs
 - Filter logs by:
@@ -300,7 +301,7 @@ This migration will:
 - create the logs table
 
 ---
-##Architecture Notes
+## Architecture Notes
 
 The project follows a modular structure:
 - handlers handle HTTP requests
